@@ -1,0 +1,94 @@
+version: "3.9"
+
+services:
+  mysql:
+    image: docker.io/bitnami/mysql:8.0.29
+    container_name: mysql
+    ports:
+      - target: 3306
+        published: 33066
+        protocol: tcp
+        mode: host
+    environment:
+      # ALLOW_EMPTY_PASSWORD is recommended only for development.
+      - ALLOW_EMPTY_PASSWORD=yes
+      - MYSQL_DATABASE=db_test
+      - MYSQL_USER=user_test
+    volumes:
+      - mysql_dbdata:/bitnami/mysql/data
+    networks:
+      - symfony_network
+
+  app:
+    image: docker.io/amyluo/php_redis_symfony:8.1
+    container_name: app
+    ports:
+      - target: 8000
+        published: 8888
+        protocol: tcp
+        mode: host
+    env_file:
+      - .env
+    environment:
+      # ALLOW_EMPTY_PASSWORD is recommended only for development.
+      - ALLOW_EMPTY_PASSWORD=yes
+      - SYMFONY_DATABASE_HOST=mysql
+      - SYMFONY_DATABASE_PORT_NUMBER=3306
+      - SYMFONY_DATABASE_NAME=db_test
+      - SYMFONY_DATABASE_USER=user_test
+    volumes:
+      - ./bash_files/.bashrc:/root/.bashrc
+      - ./:/app
+    depends_on:
+      - mysql
+#      - redis
+      - redis-json
+    networks:
+      - symfony_network
+
+#### NO JSON support Redis server ####
+#  redis:
+#    image: docker.io/bitnami/redis:7.0.2
+#    container_name: redis
+#    ports:
+#      - target: 6379
+#        published: 6379
+#        protocol: tcp
+#        mode: host
+#    environment:
+#      - ALLOW_EMPTY_PASSWORD=yes
+##      - REDIS_DISABLE_COMMANDS=FLUSHDB,FLUSHALL,CONFIG
+#    volumes:
+#      - ./bash_files/.bashrc:/root/.bashrc
+#      - redis_data:/bitnami/redis/data
+#    networks:
+#      - symfony_network
+
+#### RedisJSON: JSON support for Redis (https://redisjson.io/) ####
+  redis-json:
+    image: docker.io/redislabs/rejson:2.0.11
+    container_name: redis-json
+    ports:
+      - target: 6379
+        published: 6380
+        protocol: tcp
+        mode: host
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    volumes:
+      - ./bash_files/.bashrc:/root/.bashrc
+      - redis_json_data:/data
+    networks:
+      - symfony_network
+
+networks:
+  symfony_network:
+    name: symfony_network
+
+volumes:
+  mysql_dbdata:
+    name: mysql_dbdata
+#  redis_data:
+#    name: redis_data
+  redis_json_data:
+    name: redis_json_data
